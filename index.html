@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kora Zone - مزاد الكروت</title>
+    
+    <!-- 🎨 كود الستايل (CSS) مدمج هنا -->
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .card {
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .form-group {
+            margin: 15px 0;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background: #2b2b2b;
+            color: white;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 15px;
+        }
+
+        .btn-primary { background: #007bff; color: white; }
+        .btn-secondary { background: #28a745; color: white; }
+        .btn-bid { background: #ff9800; color: white; font-size: 18px; }
+
+        .players-bar {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .player-card-info {
+            flex: 1;
+            background: #252525;
+            padding: 12px;
+            border-radius: 8px;
+            border-right: 4px solid #007bff;
+            text-align: right;
+        }
+
+        .timer-box {
+            background: #d32f2f;
+            padding: 8px;
+            border-radius: 6px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .player-to-auction img {
+            border-radius: 50%;
+            margin-bottom: 10px;
+            border: 2px solid #ff9800;
+        }
+
+        .bid-status {
+            margin: 15px 0;
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .bid-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .logs-card {
+            text-align: right;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .logs-card ul {
+            list-style: none;
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        .logs-card li {
+            padding: 4px 0;
+            border-bottom: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- 1. شاشة الدخول والتأطير -->
+        <div id="lobby-screen" class="card">
+            <h2>🏆 Kora Zone - المزاد 🏆</h2>
+            <div class="form-group">
+                <input type="text" id="player-name-input" placeholder="اكتب اسمك هنا..." />
+            </div>
+            <div class="form-group">
+                <input type="text" id="room-id-input" placeholder="كود الغرفة (مثال: 123)" />
+            </div>
+            <div class="btn-group">
+                <button onclick="createRoom()" class="btn btn-primary">إنشاء غرفة جديدة</button>
+                <button onclick="joinRoom()" class="btn btn-secondary">انضمام لغرفة</button>
+            </div>
+        </div>
+
+        <!-- 2. شاشة الانتظار -->
+        <div id="waiting-screen" class="card hidden">
+            <h3>في انتظار المنافس... ⏳</h3>
+            <p>شارك كود الغرفة مع صديقك: <b id="display-room-code">---</b></p>
+        </div>
+
+        <!-- 3. شاشة المزاد الأساسية -->
+        <div id="game-screen" class="hidden">
+            <!-- شريط اللاعبين -->
+            <div class="players-bar">
+                <div class="player-card-info" id="p1-card">
+                    <h4 id="p1-name">اللاعب 1</h4>
+                    <p>الميزانية: $<span id="p1-budget">100</span>M</p>
+                    <p>التشكيلة: <span id="p1-squad-count">0</span> لاعبين</p>
+                </div>
+                <div class="player-card-info" id="p2-card">
+                    <h4 id="p2-name">اللاعب 2</h4>
+                    <p>الميزانية: $<span id="p2-budget">100</span>M</p>
+                    <p>التشكيلة: <span id="p2-squad-count">0</span> لاعبين</p>
+                </div>
+            </div>
+
+            <!-- منطقة المزاد -->
+            <div class="auction-zone card">
+                <div class="timer-box">الوقت المتبقي: <span id="timer">15</span> ثانية</div>
+                
+                <div class="player-to-auction">
+                    <img id="card-img" src="https://via.placeholder.com/120" alt="صورة اللاعب">
+                    <h3 id="card-name">اسم اللاعب</h3>
+                    <p>المركز: <span id="card-pos">--</span> | الطاقات: <span id="card-ovr">--</span></p>
+                </div>
+
+                <div class="bid-status">
+                    <h4>أعلى مزايدة: $<span id="current-bid">0</span>M</h4>
+                    <p>صاحب أعلى عرض: <b id="highest-bidder">لا يوجد حتى الآن</b></p>
+                </div>
+
+                <div class="bid-controls">
+                    <button onclick="makeBid(5)" class="btn btn-bid">+ 5M$</button>
+                    <button onclick="makeBid(10)" class="btn btn-bid">+ 10M$</button>
+                    <button onclick="makeBid(20)" class="btn btn-bid">+ 20M$</button>
+                </div>
+            </div>
+
+            <!-- سجل الأحداث -->
+            <div class="logs-card card">
+                <h4>سجل المزاد Live 📜</h4>
+                <ul id="log-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ⚡ كود التفاعل والربط (JS + Socket.io) -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let currentRoomId = '';
+        let myPlayerId = '';
+        let currentBidAmount = 0;
+
+        socket.on('connect', () => {
+            myPlayerId = socket.id;
+        });
+
+        function createRoom() {
+            const pName = document.getElementById('player-name-input').value.trim();
+            const rId = document.getElementById('room-id-input').value.trim().toUpperCase();
+            if (!pName || !rId) return alert('برجاء كتابة اسمك وكود الغرفة');
+            
+            currentRoomId = rId;
+            socket.emit('createRoom', { roomId: rId, playerName: pName });
+        }
+
+        function joinRoom() {
+            const pName = document.getElementById('player-name-input').value.trim();
+            const rId = document.getElementById('room-id-input').value.trim().toUpperCase();
+            if (!pName || !rId) return alert('برجاء كتابة اسمك وكود الغرفة');
+
+            currentRoomId = rId;
+            socket.emit('joinRoom', { roomId: rId, playerName: pName });
+        }
+
+        function makeBid(step) {
+            const newBid = currentBidAmount + step;
+            socket.emit('placeBid', { roomId: currentRoomId, amount: newBid });
+        }
+
+        // --- الاستماع للسيرفر ---
+
+        socket.on('roomCreated', (data) => {
+            document.getElementById('lobby-screen').classList.add('hidden');
+            document.getElementById('waiting-screen').classList.remove('hidden');
+            document.getElementById('display-room-code').innerText = data.roomId;
+        });
+
+        socket.on('gameStart', (data) => {
+            document.getElementById('lobby-screen').classList.add('hidden');
+            document.getElementById('waiting-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+
+            document.getElementById('p1-name').innerText = data.players[0].name;
+            document.getElementById('p1-budget').innerText = data.players[0].budget;
+            
+            if(data.players[1]) {
+                document.getElementById('p2-name').innerText = data.players[1].name;
+                document.getElementById('p2-budget').innerText = data.players[1].budget;
+            }
+        });
+
+        socket.on('newRound', (data) => {
+            currentBidAmount = 0;
+            document.getElementById('card-name').innerText = data.playerToAuction.name;
+            document.getElementById('card-pos').innerText = data.playerToAuction.position;
+            document.getElementById('card-ovr').innerText = data.playerToAuction.overall;
+            document.getElementById('card-img').src = data.playerToAuction.photo;
+            
+            document.getElementById('current-bid').innerText = '0';
+            document.getElementById('highest-bidder').innerText = 'لا يوجد حتى الآن';
+        });
+
+        socket.on('timerUpdate', (timeLeft) => {
+            document.getElementById('timer').innerText = timeLeft;
+        });
+
+        socket.on('bidUpdated', (data) => {
+            currentBidAmount = data.currentBid;
+            document.getElementById('current-bid').innerText = data.currentBid;
+            document.getElementById('highest-bidder').innerText = data.highestBidderName;
+        });
+
+        socket.on('playerSold', (data) => {
+            data.playersState.forEach((p, idx) => {
+                const pNum = idx + 1;
+                document.getElementById(`p${pNum}-budget`).innerText = p.budget;
+                document.getElementById(`p${pNum}-squad-count`).innerText = p.squad.length;
+            });
+        });
+
+        socket.on('updateAuctionLog', (msg) => {
+            const logList = document.getElementById('log-list');
+            const li = document.createElement('li');
+            li.innerText = msg;
+            logList.prepend(li);
+        });
+
+        socket.on('errorMsg', (msg) => {
+            alert(msg);
+        });
+
+        socket.on('gameOver', (data) => {
+            alert('انتهى المزاد بالكامل! شكراً للعب.');
+        });
+    </script>
+</body>
+</html>
